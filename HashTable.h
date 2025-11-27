@@ -29,10 +29,19 @@ class HashTable : public Dict<V> {
             return sum % maxElems;
         }
 
+	int nEntries;
+ 	int nBuckets;
+
+   	 int hash(std::string key) const {
+        unsigned long h = 0;
+        for (char c : key) h = h * 37 + c;
+        return h % nBuckets;
+   	}
+
     public:
 
         // Constructor
-        HashTable(int size) {
+        HashTable(int size, int buckets=3)  : nEntries(0), nBuckets(buckets) {
             maxElems = size;
             nElems = 0;
 
@@ -44,21 +53,29 @@ class HashTable : public Dict<V> {
             delete[] table;
         }
 
+	 int capacity() const {
+            return nBuckets;
+        }
+
+	int entries() const {
+        return nEntries;
+   	}
+
         // Inserción: Si existe la clave → sobrescribe valor
         void insert(std::string key, V value) override {
             int idx = h(key);
             TableEntry<V> temp(key);
 
-            // Si ya existe, se reemplaza el valor
-            if (table[idx].search(temp) != -1) {
-                int pos = table[idx].search(temp);
-                table[idx].update(pos, TableEntry<V>(key, value));
-                return;
-            }
+	    int pos = table[idx].search(temp);
+
+            // Si ya existe la clave, lanzamos excepción
+   	 if (pos != -1) {
+        	throw std::runtime_error("Key '" + key + "' already exists!");
+   	 }
 
             // Si no existe, insertar al principio
             table[idx].prepend(TableEntry<V>(key, value));
-            nElems++;
+            nEntries++;
         }
 
         // Search debe lanzar runtime_error si no existe
@@ -84,24 +101,56 @@ class HashTable : public Dict<V> {
 
             V val = table[idx].get(pos).value;
             table[idx].remove(pos);
-            nElems--;
+            nEntries--;
             return val;
         }
 
-        // Devuelve número de elementos en la tabla
+	// Devuelve número de elementos en la tabla
         int entries() override {
             return nElems;
         }
 
-        // Para imprimir la tabla (opcional pero útil)
-        friend std::ostream& operator<<(std::ostream& out, const HashTable<V>& ht) {
-            for (int i = 0; i < ht.maxElems; i++) {
-                out << "Cubeta " << i << ": " << ht.table[i] << "\n";
-            }
-            return out;
+        // Sobrecarga de operador []
+        V operator[](std::string key) {
+            return search(key);
         }
+
+	// Para imprimir la tabla
+        friend std::ostream& operator<<(std::ostream& out, const HashTable<V>& ht) {
+
+        out << "HashTable [entries: " << ht.nEntries
+            << ", capacity: " << ht.nBuckets << "]\n";
+        out << "==============\n\n";
+
+        for (int i = 0; i < ht.nBuckets; i++) {
+            out << "== Cubeta " << i << " ==\n\n";
+            out << "List => [";
+
+            if (ht.table[i].size() == 0) {
+                out << "]\n\n";
+                continue;
+            }
+
+            out << "\n";
+
+            for (int j = 0; j < ht.table[i].size(); j++) {
+                auto e = ht.table[i].get(j);
+
+                out << "  ('" << e.key << "' => " << e.value << ")";
+                if (j + 1 < ht.table[i].size()) out << "\n";
+                else out << "\n";
+            }
+
+            out << "]\n\n";
+        }
+
+        out << "==============\n\n";
+
+        return out;
+    }
+
+
 
 };
 
-#endif
-
+#endif 
